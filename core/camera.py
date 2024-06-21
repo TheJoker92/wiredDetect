@@ -10,7 +10,7 @@ KNOWN_DISTANCE = 24.0
 KNOWN_WIDTH = 12.0
 
 
-def add_grid_to_frame(frame, grid_size=(10, 10)):
+def add_grid_to_frame(frame, rectangle, grid_size=(10, 10)):
     """
     Draws a grid on the frame and returns the new frame.
 
@@ -37,19 +37,112 @@ def add_grid_to_frame(frame, grid_size=(10, 10)):
         x = c * col_width
         cv2.line(new_frame, (x, 0), (x, frame_height), (0, 255, 0), 1)
 
-    add_number_cell(rows, cols, row_height, col_width, new_frame)
-
-    return new_frame
+    return format_cell(rectangle, rows, cols, row_height, col_width, new_frame)
 
 
-def add_number_cell(rows, cols, row_height, col_width, new_frame):
+def format_cell(rectangle, rows, cols, row_height, col_width, new_frame):
+    cell_list = []
+
     # Add numbers at the center of each cell
     for r in range(rows):
         for c in range(cols):
             cell_center = (c * col_width + col_width // 2, r * row_height + row_height // 2)
             cell_number = r * cols + c + 1
+ 
+            # Calculate the top-left and bottom-right corners of the cell
+            cell_top_left = (cell_center[0] - col_width // 2, cell_center[1] + row_height // 2)
+            cell_bottom_right = (cell_center[0] + col_width // 2, cell_center[1] - row_height // 2)
+
+
+            if rectangle is not None:
+
+                result = find_cell_overlap(rectangle, cell_bottom_right, cell_top_left, cell_number)
+
+                if result:
+                        cell_list.append(result)
+
             cv2.putText(new_frame, str(cell_number), cell_center, cv2.FONT_HERSHEY_SIMPLEX, 
                         0.5, (255, 0, 0), 1, cv2.LINE_AA)
+            
+    for cell in cell_list:
+        cell_bottom_right, cell_top_left, cell_number = cell
+        # Define the color for the rectangle (you can change this)
+
+        
+    
+
+        # Define the rectangle color (BGR format, in this case, red)
+        color = (0, 0, 255)
+
+        # Define the thickness of the rectangle border
+        thickness = 2  # Use -1 to fill the rectangle
+
+        # Draw the rectangle on the image
+        cv2.rectangle(new_frame, cell_bottom_right, cell_top_left, color, thickness)
+
+        # cell_list = []
+                
+    
+    return new_frame
+
+# Function to resize a frame
+def scale_frame(frame, scale_percent):
+    # Calculate the new dimensions
+    width = int(frame.shape[1] * scale_percent / 100)
+    height = int(frame.shape[0] * scale_percent / 100)
+    
+    # Resize the frame
+    resized_frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
+    
+    return resized_frame
+
+
+def find_cell_overlap(rectangle, cell_bottom_right, cell_top_left, cell_number):
+    
+    cell_x_br, cell_y_br = (cell_bottom_right[0]//20, cell_bottom_right[1]//20)
+    cell_x_tl, cell_y_tl = (cell_top_left[0]//20, cell_top_left[1]//20)
+
+    rect_x_min = 0
+    rect_y_min = 0
+    rect_x_max = 0
+    rect_y_max = 0
+
+    if rectangle[0][0] < rectangle[1][0]:
+        rect_x_min = rectangle[0][0]//20
+        rect_x_max = rectangle[1][0]//20
+    elif rectangle[0][0] == rectangle[1][0]:
+        rect_x_min = rectangle[0][0]//20
+        rect_x_max = (rectangle[1][0]//20) + 1
+    else:
+        rect_x_min = rectangle[1][0]//20
+        rect_x_max = rectangle[0][0]//20
+
+    if rectangle[0][1] < rectangle[1][1]:
+        rect_y_min = rectangle[0][1]//20
+        rect_y_max = rectangle[1][1]//20
+    elif rectangle[0][1] == rectangle[1][1]:
+        rect_y_min = rectangle[0][1]//20
+        rect_y_max = (rectangle[1][1]//20) + 1
+    else:
+        rect_y_min = rectangle[1][1]//20
+        rect_y_max = rectangle[0][1]//20
+    
+
+    for x_cell in range(cell_x_tl, cell_x_br):
+        for y_cell  in range(cell_y_br, cell_y_tl):
+            for x in range(rect_x_min, rect_x_max):
+                for y in range(rect_y_min, rect_y_max):
+                    if x == x_cell and y == y_cell:
+                        return cell_bottom_right, cell_top_left, cell_number
+
+    
+                
+    
+
+def point_inside_rect(point, top_left, bottom_right):
+    return top_left[0] <= point[0] <= bottom_right[0] and top_left[1] <= point[1] <= bottom_right[1]
+
+                        
 
 
 def create_camera_grid():
@@ -61,24 +154,27 @@ def create_camera_grid():
     # Capture the video frame 
     # by frame 
         ret, frame = vid.read() 
+
+        frame = cv2.resize(frame, (1024, 720))
+
         
         
         # Display the resulting frame 
         inches, rectangle = obj_distance(frame)
         print(inches)
-        grid_frame = add_grid_to_frame(frame)
+        grid_frame = add_grid_to_frame(frame, rectangle)
 
         if not(inches == None):
             draw_inches(inches, grid_frame)
 
         
-        if not(rectangle == None):
-            cv2.rectangle(frame, rectangle[0], rectangle[1], (0, 255, 0), 2)
-            cv2.circle(frame, rectangle[0], 20, (0,255,250), 20)
+        # if rectangle is not None:
+        #     cv2.rectangle(frame, rectangle[0], rectangle[1], (0, 255, 0), 2)
+        #     cv2.circle(frame, rectangle[0], 20, (0,255,250), 20)
 
-            cv2.circle(frame, rectangle[1], 20,  (0,255,255), 20)
+        #     cv2.circle(frame, rectangle[1], 20,  (0,255,255), 20)
 
-            cv2.drawContours(frame, [rectangle[2]], -1, (0, 255, 0), 2)
+        #     cv2.drawContours(frame, [rectangle[2]], -1, (0, 255, 0), 2)
 
 
 
@@ -123,7 +219,7 @@ def obj_distance(frame):
 
         box = cv2.cv.BoxPoints(marker) if imutils.is_cv2() else cv2.boxPoints(marker)
         box = np.int0(box)
-        cv2.drawContours(frame, [box], -1, (0, 0, 255), 2)
+        cv2.drawContours(frame, [box], -1, (255, 255, 0), 2)
         
         return inches, rectangle
     except:
@@ -201,3 +297,4 @@ def draw_inches(inches, frame):
             (frame.shape[1] - 200, frame.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX,
             2.0, (255, 0, 0), 3)
         
+
