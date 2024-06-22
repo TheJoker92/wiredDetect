@@ -4,10 +4,15 @@ import imutils
 
 # initialize the known distance from the camera to the object, which
 # in this case is 24 inches
-KNOWN_DISTANCE = 24.0
+KNOWN_DISTANCE = 2.76 #11
 # initialize the known object width, which in this case, the piece of
 # paper is 12 inches wide
-KNOWN_WIDTH = 12.0
+KNOWN_WIDTH = 382 #1589.2
+
+MARKER_REAL_WIDTH = 0.22
+FOCAL_LENGTH = 800
+
+STORED_MARKER = None
 
 
 def add_grid_to_frame(frame, rectangle, grid_size=(10, 10)):
@@ -42,6 +47,7 @@ def add_grid_to_frame(frame, rectangle, grid_size=(10, 10)):
 
 def format_cell(rectangle, rows, cols, row_height, col_width, new_frame):
     cell_list = []
+    cell_num_list = []
 
     # Add numbers at the center of each cell
     for r in range(rows):
@@ -52,14 +58,14 @@ def format_cell(rectangle, rows, cols, row_height, col_width, new_frame):
             # Calculate the top-left and bottom-right corners of the cell
             cell_top_left = (cell_center[0] - col_width // 2, cell_center[1] + row_height // 2)
             cell_bottom_right = (cell_center[0] + col_width // 2, cell_center[1] - row_height // 2)
-
-
+                                                        
             if rectangle is not None:
-
                 result = find_cell_overlap(rectangle, cell_bottom_right, cell_top_left, cell_number)
 
                 if result:
                         cell_list.append(result)
+                        cell_num_list.append(cell_number)
+
 
             cv2.putText(new_frame, str(cell_number), cell_center, cv2.FONT_HERSHEY_SIMPLEX, 
                         0.5, (255, 0, 0), 1, cv2.LINE_AA)
@@ -82,8 +88,9 @@ def format_cell(rectangle, rows, cols, row_height, col_width, new_frame):
 
         # cell_list = []
                 
+    print(cell_num_list)
     
-    return new_frame
+    return new_frame, cell_num_list
 
 # Function to resize a frame
 def scale_frame(frame, scale_percent):
@@ -133,16 +140,11 @@ def find_cell_overlap(rectangle, cell_bottom_right, cell_top_left, cell_number):
             for x in range(rect_x_min, rect_x_max):
                 for y in range(rect_y_min, rect_y_max):
                     if x == x_cell and y == y_cell:
-                        return cell_bottom_right, cell_top_left, cell_number
-
-    
-                
+                        return cell_bottom_right, cell_top_left, cell_number            
     
 
 def point_inside_rect(point, top_left, bottom_right):
     return top_left[0] <= point[0] <= bottom_right[0] and top_left[1] <= point[1] <= bottom_right[1]
-
-                        
 
 
 def create_camera_grid():
@@ -160,12 +162,18 @@ def create_camera_grid():
         
         
         # Display the resulting frame 
-        inches, rectangle = obj_distance(frame)
-        print(inches)
-        grid_frame = add_grid_to_frame(frame, rectangle)
+        marker, rectangle = obj_distance(frame)
+        
+        grid_frame, num_cells = add_grid_to_frame(frame, rectangle)
 
-        if not(inches == None):
-            draw_inches(inches, grid_frame)
+        if not(marker == None):
+            
+            
+
+            inches = 2.54*(MARKER_REAL_WIDTH * FOCAL_LENGTH) / marker[1][0]
+
+            if not(inches == None):
+                draw_inches(inches, grid_frame)
 
         
         # if rectangle is not None:
@@ -206,22 +214,62 @@ def find_marker(frame):
     except:
         pass
 
-def distance_to_camera(knownWidth, focalLength, perWidth):
+def get_factor_cell(num_cell):
+    result = 1
+
+        
+    if 0 < num_cell <= 10:
+        result = 100
+    elif 10 < num_cell <= 20:
+        result = 7.5
+    elif 20 < num_cell <= 30:
+        result = 20.4
+    elif 30 < num_cell <= 40:
+        result = 8
+    elif 40 < num_cell <= 50:
+        result = 5.4
+    elif 50 < num_cell <= 60:
+        result = 3.4
+    elif 60 < num_cell <= 70:
+        result = 3
+    elif 70 < num_cell <= 80:
+        result = 1.7
+    elif 80 < num_cell <= 90:
+        result = 1.4
+    elif 90 < num_cell <= 100:
+        result = 1.1764
+    
+    print(num_cell)
+    
+    return result
+
+def distance_to_camera(knownWidth, focalLength, perWidth, num_cells):
 	# compute and return the distance from the maker to the camera
-	return (knownWidth * focalLength) / perWidth
+    factor = 1
+
+    if len(num_cells) > 0:
+        factor = get_factor_cell(num_cells[-1])
+
+    return factor*(focalLength/knownWidth) * perWidth
 
 def obj_distance(frame):
+    global STORED_MARKER
     try:
         marker, rectangle = find_marker(frame)
-        focalLength = (marker[1][0] * KNOWN_DISTANCE) / KNOWN_WIDTH
-
-        inches = distance_to_camera(KNOWN_WIDTH, focalLength, marker[1][0])
+        print(marker)
+        
 
         box = cv2.cv.BoxPoints(marker) if imutils.is_cv2() else cv2.boxPoints(marker)
         box = np.int0(box)
         cv2.drawContours(frame, [box], -1, (255, 255, 0), 2)
+
+        # if STORED_MARKER == None:
+        #     STORED_MARKER = marker
+        # elif not(STORED_MARKER == marker):
+        #     print("SSSSSSS")
+        #     raise Exception("other cable detected, not considered") 
         
-        return inches, rectangle
+        return marker, rectangle
     except:
         return None, None
 
@@ -232,7 +280,7 @@ def detect_lines(frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         
         # Apply edge detection method on the image
-        edges = cv2.Canny(gray, 220, 250, apertureSize=3)
+        edges = cv2.Canny(gray, 220, 255, apertureSize=3)
         
         # This returns an array of r and theta values
         lines = cv2.HoughLines(edges, 1, np.pi/180, 200)
