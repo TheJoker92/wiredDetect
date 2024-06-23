@@ -4,12 +4,12 @@ import imutils
 
 # initialize the known distance from the camera to the object, which
 # in this case is 24 inches
-KNOWN_DISTANCE = 2.76 #11
+KNOWN_DISTANCE = 4.33 #11
 # initialize the known object width, which in this case, the piece of
 # paper is 12 inches wide
-KNOWN_WIDTH = 382 #1589.2
+KNOWN_WIDTH = 280 #1589.2
 
-MARKER_REAL_WIDTH = 0.22
+MARKER_REAL_WIDTH = 280
 FOCAL_LENGTH = 800
 
 STORED_MARKER = None
@@ -170,7 +170,7 @@ def create_camera_grid():
             
             
 
-            inches = 2.54*(MARKER_REAL_WIDTH * FOCAL_LENGTH) / marker[1][0]
+            inches = (MARKER_REAL_WIDTH * FOCAL_LENGTH) / marker[0][1]
 
             if not(inches == None):
                 draw_inches(inches, grid_frame)
@@ -256,7 +256,7 @@ def obj_distance(frame):
     global STORED_MARKER
     try:
         marker, rectangle = find_marker(frame)
-        print(marker)
+        print("marker:".format(marker))
         
 
         box = cv2.cv.BoxPoints(marker) if imutils.is_cv2() else cv2.boxPoints(marker)
@@ -341,7 +341,7 @@ def detect_lines(frame):
 
 def draw_inches(inches, frame):
         # draw a bounding box around the image and display it
-        cv2.putText(frame, str(inches) + "[cm]",
+        cv2.putText(frame, str(2.54*inches) + "[cm]",
             (frame.shape[1] - 200, frame.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX,
             2.0, (255, 0, 0), 3)
         
