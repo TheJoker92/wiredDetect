@@ -2,12 +2,6 @@ import cv2
 import numpy as np
 import imutils
 
-# initialize the known distance from the camera to the object, which
-# in this case is 24 inches
-KNOWN_DISTANCE = 4.33 #11
-# initialize the known object width, which in this case, the piece of
-# paper is 12 inches wide
-KNOWN_WIDTH = 280 #1589.2
 
 MARKER_REAL_WIDTH = 280
 FOCAL_LENGTH = 800
@@ -305,6 +299,9 @@ def detect_lines(frame):
                 x2 = int(x0 - 1200 * (-b))
                 y2 = int(y0 - 1200 * (a))
                 return (x1, y1), (x2, y2)
+            
+            # for line in lines:
+            #     cv2.line(frame, endpoints(line)[0],endpoints(line)[1],(255,0,0))
             
             # Get endpoints of line1
             (x1, y1), (x2, y2) = endpoints(line1)
