@@ -55,7 +55,7 @@ phMin = psMin = pvMin = phMax = psMax = pvMax = 0
 
 # /Users/ADMIN/Desktop/wired/positive/0007.jpeg
 # /Users/ADMIN/Downloads/09780b72-a4d3-4b81-a267-f9c2c160f7f5.jpeg
-frame = cv2.imread("/Users/ADMIN/Desktop/wired/positive/0007.jpeg")
+frame = cv2.imread("/Users/ADMIN/Desktop/wired/positive/0003.jpeg")
 # videoCapture = cv2.VideoCapture(CAMERA_ID)
 # videoCapture.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
 # videoCapture.set(cv2.CAP_PROP_EXPOSURE, 0.25)
@@ -64,6 +64,8 @@ frame = cv2.imread("/Users/ADMIN/Desktop/wired/positive/0007.jpeg")
 while(1):
 
     # ret, frame = videoCapture.read()
+
+    print(frame.shape)
 
     # h, s, v = cv2.split(frame)
     # v += 50
@@ -121,14 +123,47 @@ while(1):
             continue
         border = cv2.drawContours(output, [c], -1, COLOR[index][1], 2)
         distances = []
+
+        x_sum = 0
+        y_sum = 0
         for point in c:
             x, y = point[0]
+            x_sum = x_sum + x
+            y_sum = y_sum + y
+
             dist = np.linalg.norm(np.array([x, y]) - np.array(reference_point))
             distances.append(dist)
     
+        x_avg = x_sum/len(c)
+        y_avg = y_sum/len(c)
+
+        cv2.circle(output, (x_avg,y_avg), radius=30, color=COLOR[index][1], thickness=-1)
+
+        
         distance_respect_to_center = min(distances)
         distance_cam = calculate_distance(distance_respect_to_center, 12)
-        print("Distanza minima dal punto di riferimento: {} pixel distance to center of frame {} colore".format(distance_respect_to_center, COLOR[index][0]))
+
+        point1 = (510, 150)
+        point2 = (410, 150)
+
+        # Distanza reale tra i due punti noti (in metri o centimetri)
+        real_distance = 4.0  # ad esempio 1 metro
+
+        # Calcola la distanza in pixel tra i due punti
+        pixel_distance = np.sqrt((point2[0] - point1[0]) ** 2 + (point2[1] - point1[1]) ** 2)
+
+        # Calcola il fattore di scala (distanza reale per pixel)
+        scale_factor = real_distance / pixel_distance
+
+        
+        cable_point1 = (x_avg, y_avg)
+
+        # Distanza in pixel del cavo
+        cable_pixel_distance = np.sqrt((cable_point1[0] - reference_point[0]) ** 2 + (cable_point1[1] - reference_point[1]) ** 2)
+
+        # # Distanza reale del cavo
+        # cable_real_distance = cable_pixel_distance * scale_fact
+        print("Distanza minima dal punto di riferimento: {} colore {} pixel {} cm distance to center ".format(COLOR[index][0], distance_respect_to_center, cable_pixel_distance))
 
     # Display output image
     cv2.imshow('image',output)
