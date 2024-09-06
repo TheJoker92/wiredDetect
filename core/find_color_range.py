@@ -60,6 +60,8 @@ frame = cv2.imread("/Users/ADMIN/Desktop/wired/positive/0003.jpeg")
 # videoCapture.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
 # videoCapture.set(cv2.CAP_PROP_EXPOSURE, 0.25)
 
+trajectories = []
+
 
 while(1):
 
@@ -110,6 +112,8 @@ while(1):
     h, w = frame.shape[:2]
     reference_point = (w // 2, h // 2)  # Centro dell'immagine
     
+    current_frame_trajectories = []
+
     
     for index in range(len(cnts)):
         print(index)
@@ -119,9 +123,6 @@ while(1):
         c = cnts[index]
         perimeter = cv2.arcLength(c, True)
 
-        if perimeter < w + h:
-            continue
-        border = cv2.drawContours(output, [c], -1, COLOR[index][1], 2)
         distances = []
 
         x_sum = 0
@@ -136,6 +137,54 @@ while(1):
     
         x_avg = x_sum/len(c)
         y_avg = y_sum/len(c)
+
+        center = (x_avg,y_avg)
+
+        if perimeter < w + h:
+            continue
+
+        border = cv2.drawContours(output, [c], -1, COLOR[index][1], 2)
+        if len(trajectories) == 0:
+            # Initialize trajectories if it's the first frame
+            trajectories = [[center] for center in current_frame_trajectories]
+        else:
+            # Match contours using simple proximity method
+            for trajectory in trajectories:
+                if len(trajectory) > 0:
+                    last_position = trajectory[-1]
+                    min_distance = float('inf')
+                    best_match = None
+                    
+                    for i, center in enumerate(current_frame_trajectories):
+                        if(last_position == None or center == None):
+                            continue
+
+                        distance = np.linalg.norm(np.array(last_position) - np.array(center))
+                        if distance < min_distance:
+                            min_distance = distance
+                            best_match = i
+                    
+                    if best_match is not None and min_distance < 50:  # Threshold for matching
+                        trajectory.append(current_frame_trajectories[best_match])
+                        current_frame_trajectories[best_match] = None
+            
+            # Add any new contours that did not match existing trajectories
+            for center in current_frame_trajectories:
+                if center is not None:
+                    trajectories.append([center])
+        
+        # Draw the trajectories
+        for trajectory in trajectories:
+            for i in range(1, len(trajectory)):
+                if trajectory[i - 1] is None or trajectory[i] is None:
+                    continue
+                cv2.line(output, trajectory[i - 1], trajectory[i], (0, 0, 255), 2)
+        
+
+        
+
+        current_frame_trajectories.append((x_avg,y_avg))
+
 
         cv2.circle(output, (x_avg,y_avg), radius=30, color=COLOR[index][1], thickness=-1)
 
