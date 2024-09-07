@@ -8,8 +8,11 @@ FOCAL_LENGTH = 800
 
 STORED_MARKER = None
 
+CAMERA_ID = "/Users/ADMIN/Downloads/0002.mp4" #0
 
-def add_grid_to_frame(frame, rectangle, grid_size=(10, 10)):
+
+
+def add_grid_to_frame(frame, rectangle, grid_size=(100, 100)):
     """
     Draws a grid on the frame and returns the new frame.
 
@@ -143,7 +146,7 @@ def point_inside_rect(point, top_left, bottom_right):
 
 def create_camera_grid():
     # define a video capture object 
-    vid = cv2.VideoCapture(0) 
+    vid = cv2.VideoCapture(CAMERA_ID) 
 
     while(True): 
         
@@ -151,14 +154,16 @@ def create_camera_grid():
     # by frame 
         ret, frame = vid.read() 
 
-        frame = cv2.resize(frame, (1024, 720))
+        if not(ret):
+            vid = cv2.VideoCapture(CAMERA_ID) 
+            continue
 
+        # frame = cv2.resize(frame, (1200, 720))
         
         
-        # Display the resulting frame 
         marker, rectangle = obj_distance(frame)
         
-        grid_frame, num_cells = add_grid_to_frame(frame, rectangle)
+        # grid_frame, num_cells = add_grid_to_frame(frame, rectangle)
 
         if not(marker == None):
             
@@ -166,8 +171,8 @@ def create_camera_grid():
 
             inches = (MARKER_REAL_WIDTH * FOCAL_LENGTH) / marker[0][1]
 
-            if not(inches == None):
-                draw_inches(inches, grid_frame)
+            # if not(inches == None):
+            #     draw_inches(inches, grid_frame)
 
         
         # if rectangle is not None:
@@ -179,9 +184,10 @@ def create_camera_grid():
         #     cv2.drawContours(frame, [rectangle[2]], -1, (0, 255, 0), 2)
 
 
+        # grid_frame = cv2.resize(grid_frame, (1200,720))
+        # cv2.imshow('frame', grid_frame)
 
-        cv2.imshow('frame', grid_frame)
-
+        cv2.imshow('frame', frame)
             
         # the 'q' button is set as the 
         # quitting button you may use any 
@@ -249,13 +255,31 @@ def distance_to_camera(knownWidth, focalLength, perWidth, num_cells):
 def obj_distance(frame):
     global STORED_MARKER
     try:
-        marker, rectangle = find_marker(frame)
-        print("marker:".format(marker))
+
+        # Display the resulting frame 
+        frame_width, frame_height  = frame.shape[:2]
+        frame_clone = frame.copy()
+
+        frame_clone[:frame_width/2 -50, :] = 100
+        frame_clone[frame_width/2 +50:, :] = 100
+        marker, rectangle = find_marker(frame_clone)
+        # print("marker:".format(marker))
         
 
         box = cv2.cv.BoxPoints(marker) if imutils.is_cv2() else cv2.boxPoints(marker)
-        box = np.int0(box)
-        cv2.drawContours(frame, [box], -1, (255, 255, 0), 2)
+        box = np.int0(box)  
+                        
+        cv2.drawContours(frame, [box], -1, (255, 155, 0), 2)
+        # Calculate the average point (centroid) by taking the mean of the points
+        average_point = np.mean(box, axis=0)
+        average_point = tuple(map(int, average_point))
+
+        frame_height, frame_width = frame.shape[:2]
+        center_of_frame = (frame_width // 2, frame_height // 2)
+        center_distance = (average_point[0] - center_of_frame[0], average_point[1] - center_of_frame[1])
+        print("{} point of line, distance from center {}".format(average_point, center_distance))
+
+        cv2.circle(frame, average_point, 20, (0,255,250), 10)
 
         # if STORED_MARKER == None:
         #     STORED_MARKER = marker
@@ -307,7 +331,7 @@ def detect_lines(frame):
             (x1, y1), (x2, y2) = endpoints(line1)
             
             # Calculate the length of the sides of the rectangle (half of the width and height)
-            width = 100  # Adjust this as needed
+            width = 10  # Adjust this as needed
             height = 50  # Adjust this as needed
             
             # Calculate points for the rectangle
@@ -328,7 +352,7 @@ def detect_lines(frame):
             contours.append(contour)
 
             rectangle = [tuple(p2), tuple(p3), contour]
-            print("REC {}".format(rectangle))
+            # print("REC {}".format(rectangle))
         
             return contours, rectangle
     except Exception as e:

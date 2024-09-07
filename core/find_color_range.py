@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import imutils
 
-CAMERA_ID = 0
+CAMERA_ID = "/Users/ADMIN/Downloads/0002.mp4" #0
 
 COLOR = [
     ["Rosso", (255, 0, 0)],
@@ -55,8 +55,8 @@ phMin = psMin = pvMin = phMax = psMax = pvMax = 0
 
 # /Users/ADMIN/Desktop/wired/positive/0007.jpeg
 # /Users/ADMIN/Downloads/09780b72-a4d3-4b81-a267-f9c2c160f7f5.jpeg
-frame = cv2.imread("/Users/ADMIN/Desktop/wired/positive/0003.jpeg")
-# videoCapture = cv2.VideoCapture(CAMERA_ID)
+# frame = cv2.imread("/Users/ADMIN/Desktop/wired/positive/0003.jpeg")
+videoCapture = cv2.VideoCapture(CAMERA_ID)
 # videoCapture.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
 # videoCapture.set(cv2.CAP_PROP_EXPOSURE, 0.25)
 
@@ -65,7 +65,11 @@ trajectories = []
 
 while(1):
 
-    # ret, frame = videoCapture.read()
+    ret, frame = videoCapture.read()
+
+    if not(ret):
+        videoCapture = cv2.VideoCapture(CAMERA_ID)
+        continue  
 
     print(frame.shape)
 
@@ -119,6 +123,7 @@ while(1):
         print(index)
         
         if index > len(COLOR) - 1:
+            print("too elems")
             continue
         c = cnts[index]
         perimeter = cv2.arcLength(c, True)
@@ -141,6 +146,7 @@ while(1):
         center = (x_avg,y_avg)
 
         if perimeter < w + h:
+            print("low perimenters")
             continue
 
         border = cv2.drawContours(output, [c], -1, COLOR[index][1], 2)
