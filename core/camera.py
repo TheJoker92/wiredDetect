@@ -8,7 +8,7 @@ FOCAL_LENGTH = 800
 
 STORED_MARKER = None
 
-CAMERA_ID = "/Users/ADMIN/Downloads/0002.mp4" #0
+CAMERA_ID = "/Users/ADMIN/Downloads/0003.mp4" #0
 
 
 
@@ -256,13 +256,7 @@ def obj_distance(frame):
     global STORED_MARKER
     try:
 
-        # Display the resulting frame 
-        frame_width, frame_height  = frame.shape[:2]
-        frame_clone = frame.copy()
-
-        frame_clone[:frame_width/2 -50, :] = 100
-        frame_clone[frame_width/2 +50:, :] = 100
-        marker, rectangle = find_marker(frame_clone)
+        marker, rectangle = find_marker(frame)
         # print("marker:".format(marker))
         
 
