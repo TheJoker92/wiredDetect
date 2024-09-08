@@ -309,8 +309,29 @@ def obj_distance(frame):
     except Exception as e:
         print(e)
         return None, None
+    
+def calculate_distance(point1, point2):
+    """Calculate Euclidean distance between two points."""
+    return np.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
+
+def calculate_angle(line1, line2):
+    """Calculate the angle between two lines."""
+    dx1, dy1 = line1[1][0] - line1[0][0], line1[1][1] - line1[0][1]
+    dx2, dy2 = line2[1][0] - line2[0][0], line2[1][1] - line2[0][1]
+    dot_product = dx1 * dx2 + dy1 * dy2
+    magnitude1 = np.sqrt(dx1**2 + dy1**2)
+    magnitude2 = np.sqrt(dx2**2 + dy2**2)
+    return np.arccos(dot_product / (magnitude1 * magnitude2))  # Angle in radians
+
+# Set thresholds for filtering
+distance_threshold = 20  # Maximum distance between endpoints to consider lines "similar"
+angle_threshold = np.pi / 36  # Maximum angle difference to consider lines "similar" (5 degrees)
+
+filtered_lines = []
+
 
 def detect_lines(frame):
+    global filtered_lines
     try:
         contours = []
         # Convert the frame to grayscale
@@ -340,7 +361,28 @@ def detect_lines(frame):
                 y2 = int(y0 - 1200 * (a))
                 return (x1, y1), (x2, y2)
             
-            for line in lines:
+            for i, line1 in enumerate(lines):
+                (x1, y1), (x2, y2) = endpoints(line1)
+                similar_found = False
+                
+                for j, line2 in enumerate(filtered_lines):
+                    (x1_f, y1_f), (x2_f, y2_f) = endpoints(line2)
+
+                    # Check if the endpoints are close enough
+                    if (calculate_distance((x1, y1), (x1_f, y1_f)) < distance_threshold and
+                        calculate_distance((x2, y2), (x2_f, y2_f)) < distance_threshold):
+                        
+                        # Check if the lines are nearly parallel (angle close to 0)
+                        angle = calculate_angle(((x1, y1), (x2, y2)), ((x1_f, y1_f), (x2_f, y2_f)))
+                        if abs(angle) < angle_threshold:
+                            similar_found = True
+                            break
+                
+                # If no similar line was found, keep this one
+                if not similar_found:
+                    filtered_lines.append(line1)
+            
+            for line in filtered_lines:
             # Filter and find lines (you may want to adjust this part)
              # Selecting the first line, you may need to adjust this
             
@@ -376,6 +418,8 @@ def detect_lines(frame):
 
                 rectangle.append([tuple(p2), tuple(p3), contour])
             # print("REC {}".format(rectangle))
+
+        filtered_lines = []
         
         return contours, rectangle
     except Exception as e:
