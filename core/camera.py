@@ -8,8 +8,24 @@ FOCAL_LENGTH = 800
 
 STORED_MARKER = None
 
-CAMERA_ID = "/Users/ADMIN/Downloads/0003.mp4" #0
+CAMERA_ID = "/Users/ADMIN/Downloads/0002.mp4" #0
 
+COLOR = [
+    ["Rosso", (255, 0, 0)],
+    ["Verde", (0, 255, 0)],
+    ["Blu", (0, 0, 255)],
+    ["Giallo", (255, 255, 0)],
+    ["Ciano", (0, 255, 255)],
+    ["Magenta", (255, 0, 255)],
+    ["Arancione", (255, 165, 0)],
+    ["Viola", (128, 0, 128)],
+    ["Lime", (0, 255, 128)],
+    ["Rosa", (255, 192, 203)],
+    ["Marrone", (165, 42, 42)],
+    ["Grigio Chiaro", (211, 211, 211)],
+    ["Oro", (255, 215, 0)],
+    ["Argento", (192, 192, 192)]
+]
 
 
 def add_grid_to_frame(frame, rectangle, grid_size=(100, 100)):
@@ -163,13 +179,14 @@ def create_camera_grid():
         
         marker, rectangle = obj_distance(frame)
         
+        
         # grid_frame, num_cells = add_grid_to_frame(frame, rectangle)
 
-        if not(marker == None):
+        # if not(marker == None):
             
             
 
-            inches = (MARKER_REAL_WIDTH * FOCAL_LENGTH) / marker[0][1]
+            # inches = (MARKER_REAL_WIDTH * FOCAL_LENGTH) / marker[0][1]
 
             # if not(inches == None):
             #     draw_inches(inches, grid_frame)
@@ -207,10 +224,8 @@ def find_marker(frame):
         # we'll assume that this is our piece of paper in the image
         cnts, rectangle = detect_lines(frame)
 
-        # cnts = imutils.grab_contours(cnts)
-        c = max(cnts, key = cv2.contourArea)
         # compute the bounding box of the of the paper region and return it
-        return cv2.minAreaRect(c), rectangle
+        return cnts, rectangle
     except:
         pass
 
@@ -256,24 +271,33 @@ def obj_distance(frame):
     global STORED_MARKER
     try:
 
-        marker, rectangle = find_marker(frame)
-        # print("marker:".format(marker))
+        cnts, rectangles = find_marker(frame)
+
+        print(len(cnts))
+
+        for index in range(len(cnts)):
+
+            cnt = cnts[index]
+            rectangle = rectangles[index]
         
+            marker = cv2.minAreaRect(cnt)
 
-        box = cv2.cv.BoxPoints(marker) if imutils.is_cv2() else cv2.boxPoints(marker)
-        box = np.int0(box)  
-                        
-        cv2.drawContours(frame, [box], -1, (255, 155, 0), 2)
-        # Calculate the average point (centroid) by taking the mean of the points
-        average_point = np.mean(box, axis=0)
-        average_point = tuple(map(int, average_point))
 
-        frame_height, frame_width = frame.shape[:2]
-        center_of_frame = (frame_width // 2, frame_height // 2)
-        center_distance = (average_point[0] - center_of_frame[0], average_point[1] - center_of_frame[1])
-        print("{} point of line, distance from center {}".format(average_point, center_distance))
+            box = cv2.cv.BoxPoints(marker) if imutils.is_cv2() else cv2.boxPoints(marker)
+            box = np.int0(box)  
 
-        cv2.circle(frame, average_point, 20, (0,255,250), 10)
+                            
+            cv2.drawContours(frame, [box], -1, COLOR[index][1], 2)
+            # Calculate the average point (centroid) by taking the mean of the points
+            average_point = np.mean(box, axis=0)
+            average_point = tuple(map(int, average_point))
+
+            frame_height, frame_width = frame.shape[:2]
+            center_of_frame = (frame_width // 2, frame_height // 2)
+            center_distance = (average_point[0] - center_of_frame[0], average_point[1] - center_of_frame[1])
+            print("{} point of line, distance from center {}".format(average_point, center_distance))
+
+            cv2.circle(frame, average_point, 20, (0,255,250), 10)
 
         # if STORED_MARKER == None:
         #     STORED_MARKER = marker
@@ -281,8 +305,9 @@ def obj_distance(frame):
         #     print("SSSSSSS")
         #     raise Exception("other cable detected, not considered") 
         
-        return marker, rectangle
-    except:
+        return cnts, rectangle
+    except Exception as e:
+        print(e)
         return None, None
 
 def detect_lines(frame):
@@ -296,16 +321,13 @@ def detect_lines(frame):
         
         # This returns an array of r and theta values
         lines = cv2.HoughLines(edges, 1, np.pi/180, 200)
+
+        rectangle = []
         
         # The below for loop runs till r and theta values
         # are in the range of the 2d array
         if lines is not None and len(lines) > 0:
             lines = np.squeeze(lines)
-    
-            # Filter and find lines (you may want to adjust this part)
-            line1 = lines[0]  # Selecting the first line, you may need to adjust this
-            
-            # Function to find endpoints of the line
             def endpoints(line):
                 rho, theta = line
                 a = np.cos(theta)
@@ -318,37 +340,44 @@ def detect_lines(frame):
                 y2 = int(y0 - 1200 * (a))
                 return (x1, y1), (x2, y2)
             
+            for line in lines:
+            # Filter and find lines (you may want to adjust this part)
+             # Selecting the first line, you may need to adjust this
+            
+            # Function to find endpoints of the line
+            
             # for line in lines:
             #     cv2.line(frame, endpoints(line)[0],endpoints(line)[1],(255,0,0))
             
             # Get endpoints of line1
-            (x1, y1), (x2, y2) = endpoints(line1)
-            
-            # Calculate the length of the sides of the rectangle (half of the width and height)
-            width = 10  # Adjust this as needed
-            height = 50  # Adjust this as needed
-            
-            # Calculate points for the rectangle
-            dx = x2 - x1
-            dy = y2 - y1
-            magnitude = np.sqrt(dx**2 + dy**2)
-            ux = 0.1*dx / magnitude  # Unit vector along the line direction
-            uy = 0.1*dy / magnitude
-            
-            # Points of the rectangle
-            p1 = (int(x1 + width * uy), int(y1 - width * ux))
-            p2 = (int(x1 - width * uy), int(y1 + width * ux))
-            p3 = (int(x2 - width * uy), int(y2 + width * ux))
-            p4 = (int(x2 + width * uy), int(y2 - width * ux))
+                (x1, y1), (x2, y2) = endpoints(line)
+                
+                # Calculate the length of the sides of the rectangle (half of the width and height)
+                width = 10  # Adjust this as needed
+                height = 50  # Adjust this as needed
+                
+                # Calculate points for the rectangle
+                dx = x2 - x1
+                dy = y2 - y1
+                magnitude = np.sqrt(dx**2 + dy**2)
+                ux = 0.1*dx / magnitude  # Unit vector along the line direction
+                uy = 0.1*dy / magnitude
+                
+                # Points of the rectangle
+                p1 = (int(x1 + width * uy), int(y1 - width * ux))
+                p2 = (int(x1 - width * uy), int(y1 + width * ux))
+                p3 = (int(x2 - width * uy), int(y2 + width * ux))
+                p4 = (int(x2 + width * uy), int(y2 - width * ux))
 
-                            
-            contour = np.array([tuple(p1), tuple(p1), tuple(p2), tuple(p3), tuple(p4)], dtype=np.int32)
-            contours.append(contour)
+                
+                                
+                contour = np.array([tuple(p1), tuple(p1), tuple(p2), tuple(p3), tuple(p4)], dtype=np.int32)
+                contours.append(contour)
 
-            rectangle = [tuple(p2), tuple(p3), contour]
+                rectangle.append([tuple(p2), tuple(p3), contour])
             # print("REC {}".format(rectangle))
         
-            return contours, rectangle
+        return contours, rectangle
     except Exception as e:
         print (e)
         print("No line")
